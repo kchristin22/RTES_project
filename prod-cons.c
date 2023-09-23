@@ -270,7 +270,7 @@ int main(int argc, char *argv[])
   T.TimerFcn = find_primes;
   T.arg = &fpa;
   T.StartDelay = 2;
-  T.Period = 1000000;
+  T.Period = 1000000; // change this
   T.ErrorFcn = errorFnc;
   // signal(SIGUSR1, T.ErrorFcn);
   T.StartFcn = start;
@@ -284,18 +284,29 @@ int main(int argc, char *argv[])
   prod_args.fifo = fifo;
   prod_args.T = &T;
 
+  int thread_chunk = fmod(p, num_tasks) == 0 ? p / num_tasks : (p / num_tasks) + 1;
+
   if (fifo == NULL)
   {
     fprintf(stderr, "main: Queue Init failed.\n");
     exit(1);
   }
-  for (int i = 0; i < p; ++i)
+  for (int task = 0; task < num_tasks; task++)
   {
-    if (pthread_create(&pro[i], NULL, producer, &prod_args) != 0)
+    int limit = (task + 1) * thread_chunk;
+    if (task == (num_tasks - 1))
     {
-      fprintf(stderr, "Failed to create producer thread %d\n", i);
-      return 1;
+      limit = p - (num_tasks - 1) * thread_chunk;
     }
+    for (int i = task * thread_chunk; i <= limit; ++i)
+    {
+      if (pthread_create(&pro[i], NULL, producer, &prod_args) != 0)
+      {
+        fprintf(stderr, "Failed to create producer thread %d\n", i);
+        return 1;
+      }
+    }
+    // change T.Period
   }
   for (int i = 0; i < q; ++i)
   {
