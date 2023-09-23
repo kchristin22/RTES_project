@@ -29,7 +29,8 @@
 #define LOOP 100000000 // change this
 #define P 5
 #define Q 3
-#define NUM_PRIME_THREADS 5
+#define NUM_TASKS 1
+#define PERIOD 1000000 // 1 sec
 
 void *producer (void *args);
 void *consumer (void *args);
@@ -176,28 +177,38 @@ void* errorFnc(void *q){
 
 int main (int argc, char *argv[])
 {
-  int p, q, queuesize;
+  int p = P, q = Q, queuesize = QUEUESIZE;
+  int period[3], num_tasks = NUM_TASKS;
   switch (argc)
   {
-  case 1:
-    p = P;
-    q = Q;
-    queuesize = QUEUESIZE;
-    break;
-  case 2:
-    p = atoi(argv[1]);
-    q = Q;
-    queuesize = QUEUESIZE;
-    break;
-  case 3:
-    p = atoi(argv[1]);
-    q = atoi(argv[2]);
-    queuesize = QUEUESIZE;
-    break;
-  case 4:
-    p = atoi(argv[1]);
-    q = atoi(argv[2]);
-    queuesize = atoi(argv[3]);
+    case 4:
+      if (fmod(atof(argv[3]),1) > 0)
+        period[2] =  atof(argv[3]);
+      else{
+        period[2] = PERIOD;
+        queuesize = atoi(argv[3]);
+      }
+    case 3:
+      if (fmod(atof(argv[2]),1) > 0){ 
+        period[1] =  atof(argv[1]);
+        num_tasks++;
+      }
+      else{
+        period[1] = PERIOD;
+        q = atoi(argv[2]);
+      }
+    case 2:
+      if (fmod(atof(argv[1]),1) > 0){ 
+        period[0] =  atof(argv[1]);
+        num_tasks = NUM_TASKS;
+      }
+      else{
+        period[0] = PERIOD;
+        p = atoi(argv[1]);
+      }
+      break;
+    // case 5:
+    //   period = atof(argv[4]);
   }
   
   pthread_t pro[p], con[q];
