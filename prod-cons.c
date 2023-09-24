@@ -270,7 +270,7 @@ int main(int argc, char *argv[])
   T.TimerFcn = find_primes;
   T.arg = &fpa;
   T.StartDelay = 2;
-  T.Period = 1000000; // change this
+  T.Period = period[0]; // change this
   T.ErrorFcn = errorFnc;
   // signal(SIGUSR1, T.ErrorFcn);
   T.StartFcn = start;
@@ -291,7 +291,7 @@ int main(int argc, char *argv[])
     fprintf(stderr, "main: Queue Init failed.\n");
     exit(1);
   }
-  for (int task = 0; task < num_tasks; task++)
+  for (int task = 0; task <= num_tasks; task++)
   {
     int limit = (task + 1) * thread_chunk;
     if (task == (num_tasks - 1))
@@ -307,6 +307,7 @@ int main(int argc, char *argv[])
       }
     }
     // change T.Period
+    T.Period = period[task + 1];
   }
   for (int i = 0; i < q; ++i)
   {
