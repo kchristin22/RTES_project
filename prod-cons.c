@@ -24,13 +24,14 @@
 #include <stdbool.h>
 #include <time.h>
 #include <signal.h>
+#include <string.h>
 
 #define QUEUESIZE 5;
 #define LOOP 100000000 // change this
-#define P 5
+#define P 3
 #define Q 3
 #define NUM_TASKS 1
-#define PERIOD 1000000 // 1 sec
+#define PERIOD 1 // 1 sec
 
 void *producer(void *args);
 void *consumer(void *args);
@@ -160,7 +161,7 @@ typedef struct
   Timer *buf;
   long head, tail;
   int full, empty, size;
-  pthread_mutex_t *mut;
+  pthread_mutex_t *prod_mut, *cons_mut;
   pthread_cond_t *notFull, *notEmpty;
 } queue;
 
@@ -182,7 +183,7 @@ void *errorFnc(void *q)
   while (fifo->full)
   {
     // printf ("waiting for queue to empty \n");
-    pthread_cond_wait(fifo->notFull, fifo->mut);
+    pthread_cond_wait(fifo->notFull, fifo->prod_mut);
     // printf ("signal acquired and fifo->full is: %d \n", fifo->full);
   }
   return (NULL);
@@ -191,72 +192,39 @@ void *errorFnc(void *q)
 int main(int argc, char *argv[])
 {
   int p = P, q = Q, queuesize = QUEUESIZE;
-  int num_tasks = NUM_TASKS - 1;
-  float period[3];
-  switch (argc)
-  {
-  case 7:
-    num_tasks = 3;
-    period[0] = atof(argv[4]);
-    period[1] = atof(argv[5]);
-    period[2] = atof(argv[6]);
+  int num_tasks = NUM_TASKS;
+  float period[3] = {PERIOD, PERIOD, PERIOD};
 
-    p = atoi(argv[1]);
-    q = atoi(argv[2]);
-    queuesize = atoi(argv[3]);
-    break;
-  case 6:
-    q = atoi(argv[2]);
-    period[num_tasks] = atof(argv[5]);
-    num_tasks++;
-  case 5:
-    p = atoi(argv[1]);
-    period[num_tasks] = atof(argv[4]);
-    num_tasks++;
-  case 4:
-    if (fmod(atof(argv[3]), 1) > 0)
+  if (argc > 1)
+  {
+    for (int i = 1; i < argc; i++)
     {
-      period[num_tasks] = atof(argv[3]);
-      num_tasks++;
+      printf("argv[%d]: %s\n", i, argv[i]);
+      switch (argv[i][0])
+      {
+      case 'p':
+        p = atoi(argv[i] + 2);
+        printf("p: %d\n", p);
+        break;
+      case 'q':
+        q = atoi(argv[i] + 2);
+        printf("q: %d\n", q);
+        break;
+      case 's':
+        queuesize = atoi(argv[i] + 2);
+        break;
+      case 't':
+        period[num_tasks - 1] = atof(argv[i] + 2);
+        num_tasks++;
+        break;
+      default:
+        printf("Wrong argument, using default feature\n");
+      }
     }
-    else
-    {
-      period[num_tasks] = PERIOD;
-      queuesize = atoi(argv[3]);
-    }
-    if (argc == 6)
-      break;
-  case 3:
-    if (fmod(atof(argv[2]), 1) > 0)
-    {
-      period[num_tasks] = atof(argv[1]);
-      num_tasks++;
-    }
-    else
-    {
-      period[num_tasks] = PERIOD;
-      q = atoi(argv[2]);
-    }
-    if (argc == 5)
-      break;
-  case 2:
-    if (fmod(atof(argv[1]), 1) > 0)
-    {
-      period[num_tasks] = atof(argv[1]);
-      num_tasks++;
-    }
-    else
-    {
-      period[num_tasks] = PERIOD;
-      p = atoi(argv[1]);
-    }
-    break;
-  default:
-    printf("Wrong number of arguments\n");
   }
 
+  num_tasks--; // reverse the last increment of num_tasks
   pthread_t pro[p], con[q];
-
   queue *fifo;
   fifo = queueInit(queuesize);
 
@@ -266,39 +234,48 @@ int main(int argc, char *argv[])
   fpa.numbers = numbers;
   fpa.size = 9;
 
-  Timer T;
-  T.TimerFcn = find_primes;
-  T.arg = &fpa;
-  T.StartDelay = 2;
-  T.Period = period[0]; // change this
-  T.ErrorFcn = errorFnc;
-  // signal(SIGUSR1, T.ErrorFcn);
-  T.StartFcn = start;
-  T.TasksToExecute = 11;
-  T.id = 1;
-  T.StopFcn = stop;
-
-  T.StartFcn(&T);
+  Timer T[num_tasks];
+  for (int i = 0; i < num_tasks; i++)
+  {
+    T[i].TimerFcn = find_primes;
+    T[i].arg = &fpa;
+    T[i].Period = 1000000 * period[i];
+    T[i].TasksToExecute = 11;
+    T[i].id = i + 1;
+    T[i].StartDelay = 2;
+    T[i].ErrorFcn = errorFnc;
+    T[i].StartFcn = start;
+    T[i].StopFcn = stop;
+    T[i].StartFcn(&T[i]);
+  }
 
   Arguments prod_args;
   prod_args.fifo = fifo;
-  prod_args.T = &T;
 
-  int thread_chunk = fmod(p, num_tasks) == 0 ? p / num_tasks : (p / num_tasks) + 1;
+  int thread_chunk = p / num_tasks;
+  int limit = 0;
 
   if (fifo == NULL)
   {
     fprintf(stderr, "main: Queue Init failed.\n");
     exit(1);
   }
-  for (int task = 0; task <= num_tasks; task++)
+  for (int task = 0; task < num_tasks; task++)
   {
-    int limit = (task + 1) * thread_chunk;
+
+    prod_args.T = &T[task];
+
     if (task == (num_tasks - 1))
     {
-      limit = p - (num_tasks - 1) * thread_chunk;
+      limit = limit + p - ((num_tasks - 1) * thread_chunk);
+      printf("limit: %d\n", limit);
     }
-    for (int i = task * thread_chunk; i <= limit; ++i)
+    else
+    {
+      limit = (task + 1) * thread_chunk;
+      printf("limit: %d\n", limit);
+    }
+    for (int i = task * thread_chunk; i < limit; ++i)
     {
       if (pthread_create(&pro[i], NULL, producer, &prod_args) != 0)
       {
@@ -306,8 +283,6 @@ int main(int argc, char *argv[])
         return 1;
       }
     }
-    // change T.Period
-    T.Period = period[task + 1];
   }
   for (int i = 0; i < q; ++i)
   {
@@ -351,7 +326,7 @@ void *producer(void *args)
   int i;
   for (i = 0; i < LOOP; i++)
   {
-    pthread_mutex_lock(fifo->mut);
+    pthread_mutex_lock(fifo->prod_mut);
     if (fifo->full)
     {
       printf("producer: queue FULL. \n");
@@ -361,20 +336,21 @@ void *producer(void *args)
     if (T->TasksToExecute <= 0)
     {
       printf("producer exits\n");
-      pthread_mutex_unlock(fifo->mut);
+      pthread_mutex_unlock(fifo->prod_mut);
       return (NULL);
     }
 
     T->TasksToExecute--; // important order: before usleep
     printf("TasksToExecute: %d\n", (T->TasksToExecute + 1));
     struct timeval previous = start;
+    size_t sleep = T->Period - 10000 * (start.tv_sec - previous.tv_sec) - (start.tv_usec - previous.tv_usec);
+    // printf("sleep for %ld us\n", sleep);
+    usleep(sleep); // move this into the mutex for a real timer
     gettimeofday(&start, NULL);
     T->add_queue = &start;
     queueAdd(fifo, *T);
-    pthread_mutex_unlock(fifo->mut);
+    pthread_mutex_unlock(fifo->prod_mut);
     pthread_cond_broadcast(fifo->notEmpty);
-    size_t sleep = T->Period - 10000 * (start.tv_sec - previous.tv_sec) - (start.tv_usec - previous.tv_usec);
-    usleep(sleep);
   }
   return (NULL);
 }
@@ -389,27 +365,27 @@ void *consumer(void *q)
 
   for (i = 0;; i++)
   {
-    pthread_mutex_lock(fifo->mut);
+    pthread_mutex_lock(fifo->cons_mut);
     while (fifo->empty)
     {
       if (flag)
       {
         printf("consumer exits\n");
-        pthread_mutex_unlock(fifo->mut);
+        pthread_mutex_unlock(fifo->cons_mut);
         return (NULL);
       }
-      printf("consumer: queue EMPTY.\n");
-      pthread_cond_wait(fifo->notEmpty, fifo->mut);
+      // printf("consumer: queue EMPTY.\n");
+      pthread_cond_wait(fifo->notEmpty, fifo->cons_mut);
     }
     queueDel(fifo, &d);
-    pthread_mutex_unlock(fifo->mut);
+    pthread_mutex_unlock(fifo->cons_mut);
     // raise(SIGUSR1);
     pthread_cond_broadcast(fifo->notFull);
     // printf ("consumer: received %d.\n", i++);
     struct timeval end;
     gettimeofday(&end, NULL);
     time_t interval = 1000000 * (end.tv_sec - d.add_queue->tv_sec) + end.tv_usec - d.add_queue->tv_usec;
-    printf("Time interval: %ld us\n", interval);
+    // printf("Time interval: %ld us\n", interval);
     fflush(stdout);
     d.TimerFcn(d.arg);
     if (d.TasksToExecute == 0)
@@ -434,8 +410,10 @@ queue *queueInit(int size)
   q->head = 0;
   q->tail = 0;
   q->size = size;
-  q->mut = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
-  pthread_mutex_init(q->mut, NULL);
+  q->prod_mut = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+  q->cons_mut = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+  pthread_mutex_init(q->prod_mut, NULL);
+  pthread_mutex_init(q->cons_mut, NULL);
   q->notFull = (pthread_cond_t *)malloc(sizeof(pthread_cond_t));
   pthread_cond_init(q->notFull, NULL);
   q->notEmpty = (pthread_cond_t *)malloc(sizeof(pthread_cond_t));
@@ -446,8 +424,10 @@ queue *queueInit(int size)
 
 void queueDelete(queue *q)
 {
-  pthread_mutex_destroy(q->mut);
-  free(q->mut);
+  pthread_mutex_destroy(q->prod_mut);
+  free(q->prod_mut);
+  pthread_mutex_destroy(q->cons_mut);
+  free(q->cons_mut);
   pthread_cond_destroy(q->notFull);
   free(q->notFull);
   pthread_cond_destroy(q->notEmpty);
