@@ -28,8 +28,8 @@
 
 #define QUEUESIZE 5;
 #define LOOP 100000000 // change this
-#define P 3
-#define Q 3
+#define P 4
+#define Q 4
 #define NUM_TASKS 1
 #define PERIOD 1 // 1 sec
 
@@ -71,6 +71,7 @@ void *stop(__uint32_t id)
 void *start(void *T)
 {
   Timer *timer = (Timer *)T;
+  usleep(timer->StartDelay);
   static struct timeval start;
   gettimeofday(&start, NULL);
   timer->TimerFcn(timer->arg);
@@ -161,7 +162,7 @@ typedef struct
   Timer *buf;
   long head, tail;
   int full, empty, size, num_tasks;
-  pthread_mutex_t **prod_mut, *cons_mut, *add_queue_mut;
+  pthread_mutex_t **prod_mut, *cons_mut, *queue_mut;
   pthread_cond_t *notFull, *notEmpty;
 } queue;
 
@@ -223,6 +224,9 @@ int main(int argc, char *argv[])
       }
     }
   }
+  // num_tasks = 2;
+  // period[0] = 3;
+  // period[1] = 1;
 
   num_tasks--; // reverse the last increment of num_tasks
   pthread_t pro[p], con[q];
@@ -236,6 +240,7 @@ int main(int argc, char *argv[])
   fpa.size = 9;
 
   Timer T[num_tasks];
+  Arguments prod_args[num_tasks];
   for (int i = 0; i < num_tasks; i++)
   {
     T[i].TimerFcn = find_primes;
@@ -243,15 +248,15 @@ int main(int argc, char *argv[])
     T[i].Period = 1000000 * period[i];
     T[i].TasksToExecute = 11;
     T[i].id = i + 1;
-    T[i].StartDelay = 2;
+    T[i].StartDelay = 1000000;
     T[i].ErrorFcn = errorFnc;
     T[i].StartFcn = start;
     T[i].StopFcn = stop;
     T[i].StartFcn(&T[i]);
-  }
 
-  Arguments prod_args;
-  prod_args.fifo = fifo;
+    prod_args[i].fifo = fifo;
+    prod_args[i].T = &T[i];
+  }
 
   int thread_chunk = p / num_tasks;
   int limit = 0;
@@ -263,8 +268,6 @@ int main(int argc, char *argv[])
   }
   for (int task = 0; task < num_tasks; task++)
   {
-
-    prod_args.T = &T[task];
 
     if (task == (num_tasks - 1))
     {
@@ -278,7 +281,8 @@ int main(int argc, char *argv[])
     }
     for (int i = task * thread_chunk; i < limit; ++i)
     {
-      if (pthread_create(&pro[i], NULL, producer, &prod_args) != 0)
+      printf("Creating producer thread %d for task %d\n", i, task);
+      if (pthread_create(&pro[i], NULL, producer, &prod_args[task]) != 0)
       {
         fprintf(stderr, "Failed to create producer thread %d\n", i);
         return 1;
@@ -336,7 +340,7 @@ void *producer(void *args)
 
     if (T->TasksToExecute <= 0)
     {
-      printf("producer exits\n");
+      printf("producer exits for id %d\n", T->id);
       pthread_mutex_unlock(fifo->prod_mut[T->id - 1]);
       return (NULL);
     }
@@ -345,10 +349,10 @@ void *producer(void *args)
     printf("TasksToExecute of Timer with id %d: %d\n", T->id, (T->TasksToExecute + 1));
     struct timeval previous = start;
     gettimeofday(&start, NULL);
-    pthread_mutex_lock(fifo->add_queue_mut);
+    pthread_mutex_lock(fifo->queue_mut);
     T->add_queue = &start;
     queueAdd(fifo, *T);
-    pthread_mutex_unlock(fifo->add_queue_mut);
+    pthread_mutex_unlock(fifo->queue_mut);
     size_t sleep = T->Period - 10000 * (start.tv_sec - previous.tv_sec) - (start.tv_usec - previous.tv_usec);
     // printf("sleep for %ld us\n", sleep);
     usleep(sleep); // move this into the mutex for a real timer
@@ -380,7 +384,9 @@ void *consumer(void *q)
       // printf("consumer: queue EMPTY.\n");
       pthread_cond_wait(fifo->notEmpty, fifo->cons_mut);
     }
+    pthread_mutex_lock(fifo->queue_mut);
     queueDel(fifo, &d);
+    pthread_mutex_unlock(fifo->queue_mut);
     pthread_mutex_unlock(fifo->cons_mut);
     // raise(SIGUSR1);
     pthread_cond_broadcast(fifo->notFull);
@@ -421,8 +427,8 @@ queue *queueInit(int size, __uint8_t num_tasks)
   }
   q->cons_mut = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
   pthread_mutex_init(q->cons_mut, NULL);
-  q->add_queue_mut = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
-  pthread_mutex_init(q->add_queue_mut, NULL);
+  q->queue_mut = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+  pthread_mutex_init(q->queue_mut, NULL);
   q->notFull = (pthread_cond_t *)malloc(sizeof(pthread_cond_t));
   pthread_cond_init(q->notFull, NULL);
   q->notEmpty = (pthread_cond_t *)malloc(sizeof(pthread_cond_t));
@@ -441,8 +447,8 @@ void queueDelete(queue *q)
   free(q->prod_mut);
   pthread_mutex_destroy(q->cons_mut);
   free(q->cons_mut);
-  pthread_mutex_destroy(q->add_queue_mut);
-  free(q->add_queue_mut);
+  pthread_mutex_destroy(q->queue_mut);
+  free(q->queue_mut);
   pthread_cond_destroy(q->notFull);
   free(q->notFull);
   pthread_cond_destroy(q->notEmpty);
