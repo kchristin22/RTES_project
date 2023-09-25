@@ -56,7 +56,7 @@ typedef struct
   void *(*StopFcn)(__uint32_t id); // function to be executed after the last call of the TimerFcn (TasksToExecute==0)
   void *(*TimerFcn)(void *);       // function to be executed at the start of each period
   void *arg;
-  void *(*ErrorFcn)(void *); // function to be executed in case the queue is full
+  void *(*ErrorFcn)(void *, void *); // function to be executed in case the queue is full
   __uint32_t id;
   struct timeval *add_queue; // pointer to save the timestamp of adding the object to the queue
   struct timeval *del_queue; // pointer to save the timestamp of deleting the object from the queue
@@ -160,12 +160,12 @@ typedef struct
 {
   Timer *buf;
   long head, tail;
-  int full, empty, size;
-  pthread_mutex_t *prod_mut, *cons_mut;
+  int full, empty, size, num_tasks;
+  pthread_mutex_t **prod_mut, *cons_mut, *add_queue_mut;
   pthread_cond_t *notFull, *notEmpty;
 } queue;
 
-queue *queueInit(int size);
+queue *queueInit(int size, __uint8_t num_tasks);
 void queueDelete(queue *q);
 void queueAdd(queue *q, Timer in);
 void queueDel(queue *q, Timer *out);
@@ -177,13 +177,14 @@ typedef struct
   Timer *T;
 } Arguments;
 
-void *errorFnc(void *q)
+void *errorFnc(void *q, void *id)
 {
   queue *fifo = (queue *)q;
+  __uint8_t *task = (__uint8_t *)id;
   while (fifo->full)
   {
     // printf ("waiting for queue to empty \n");
-    pthread_cond_wait(fifo->notFull, fifo->prod_mut);
+    pthread_cond_wait(fifo->notFull, fifo->prod_mut[*task - 1]);
     // printf ("signal acquired and fifo->full is: %d \n", fifo->full);
   }
   return (NULL);
@@ -226,7 +227,7 @@ int main(int argc, char *argv[])
   num_tasks--; // reverse the last increment of num_tasks
   pthread_t pro[p], con[q];
   queue *fifo;
-  fifo = queueInit(queuesize);
+  fifo = queueInit(queuesize, num_tasks);
 
   static int numbers[] = {17, 23, 34, 47, 53, 67, 79, 81, 97};
 
@@ -268,12 +269,12 @@ int main(int argc, char *argv[])
     if (task == (num_tasks - 1))
     {
       limit = limit + p - ((num_tasks - 1) * thread_chunk);
-      // printf("limit: %d\n", limit);
+      printf("limit: %d\n", limit);
     }
     else
     {
       limit = (task + 1) * thread_chunk;
-      // printf("limit: %d\n", limit);
+      printf("limit: %d\n", limit);
     }
     for (int i = task * thread_chunk; i < limit; ++i)
     {
@@ -326,30 +327,32 @@ void *producer(void *args)
   int i;
   for (i = 0; i < LOOP; i++)
   {
-    pthread_mutex_lock(fifo->prod_mut);
+    pthread_mutex_lock(fifo->prod_mut[T->id - 1]);
     if (fifo->full)
     {
       printf("producer: queue FULL. \n");
-      T->ErrorFcn(fifo);
+      T->ErrorFcn(fifo, &T->id);
     }
 
     if (T->TasksToExecute <= 0)
     {
       printf("producer exits\n");
-      pthread_mutex_unlock(fifo->prod_mut);
+      pthread_mutex_unlock(fifo->prod_mut[T->id - 1]);
       return (NULL);
     }
 
     T->TasksToExecute--; // important order: before usleep
-    printf("TasksToExecute: %d\n", (T->TasksToExecute + 1));
+    printf("TasksToExecute of Timer with id %d: %d\n", T->id, (T->TasksToExecute + 1));
     struct timeval previous = start;
     gettimeofday(&start, NULL);
+    pthread_mutex_lock(fifo->add_queue_mut);
     T->add_queue = &start;
     queueAdd(fifo, *T);
-    pthread_mutex_unlock(fifo->prod_mut);
+    pthread_mutex_unlock(fifo->add_queue_mut);
     size_t sleep = T->Period - 10000 * (start.tv_sec - previous.tv_sec) - (start.tv_usec - previous.tv_usec);
     // printf("sleep for %ld us\n", sleep);
     usleep(sleep); // move this into the mutex for a real timer
+    pthread_mutex_unlock(fifo->prod_mut[T->id - 1]);
     pthread_cond_broadcast(fifo->notEmpty);
   }
   return (NULL);
@@ -396,7 +399,7 @@ void *consumer(void *q)
   return (NULL);
 }
 
-queue *queueInit(int size)
+queue *queueInit(int size, __uint8_t num_tasks)
 {
   queue *q;
 
@@ -410,10 +413,16 @@ queue *queueInit(int size)
   q->head = 0;
   q->tail = 0;
   q->size = size;
-  q->prod_mut = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+  q->prod_mut = (pthread_mutex_t **)malloc(num_tasks * sizeof(pthread_mutex_t *));
+  for (__uint8_t task = 0; task < num_tasks; task++)
+  {
+    q->prod_mut[task] = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+    pthread_mutex_init(q->prod_mut[task], NULL);
+  }
   q->cons_mut = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
-  pthread_mutex_init(q->prod_mut, NULL);
   pthread_mutex_init(q->cons_mut, NULL);
+  q->add_queue_mut = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+  pthread_mutex_init(q->add_queue_mut, NULL);
   q->notFull = (pthread_cond_t *)malloc(sizeof(pthread_cond_t));
   pthread_cond_init(q->notFull, NULL);
   q->notEmpty = (pthread_cond_t *)malloc(sizeof(pthread_cond_t));
@@ -424,10 +433,16 @@ queue *queueInit(int size)
 
 void queueDelete(queue *q)
 {
-  pthread_mutex_destroy(q->prod_mut);
+  for (__uint8_t task = 0; task < q->num_tasks; task++)
+  {
+    pthread_mutex_destroy(q->prod_mut[task]);
+    free(q->prod_mut[task]);
+  }
   free(q->prod_mut);
   pthread_mutex_destroy(q->cons_mut);
   free(q->cons_mut);
+  pthread_mutex_destroy(q->add_queue_mut);
+  free(q->add_queue_mut);
   pthread_cond_destroy(q->notFull);
   free(q->notFull);
   pthread_cond_destroy(q->notEmpty);
@@ -439,7 +454,7 @@ void queueDelete(queue *q)
 void queueAdd(queue *q, Timer in)
 {
   q->buf[q->tail] = in;
-  q->tail++;
+  q->tail++; // atomic operation
   if (q->tail == q->size)
     q->tail = 0;
   if (q->tail == q->head)
