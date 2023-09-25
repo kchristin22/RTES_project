@@ -268,12 +268,12 @@ int main(int argc, char *argv[])
     if (task == (num_tasks - 1))
     {
       limit = limit + p - ((num_tasks - 1) * thread_chunk);
-      printf("limit: %d\n", limit);
+      // printf("limit: %d\n", limit);
     }
     else
     {
       limit = (task + 1) * thread_chunk;
-      printf("limit: %d\n", limit);
+      // printf("limit: %d\n", limit);
     }
     for (int i = task * thread_chunk; i < limit; ++i)
     {
@@ -343,13 +343,13 @@ void *producer(void *args)
     T->TasksToExecute--; // important order: before usleep
     printf("TasksToExecute: %d\n", (T->TasksToExecute + 1));
     struct timeval previous = start;
-    size_t sleep = T->Period - 10000 * (start.tv_sec - previous.tv_sec) - (start.tv_usec - previous.tv_usec);
-    // printf("sleep for %ld us\n", sleep);
-    usleep(sleep); // move this into the mutex for a real timer
     gettimeofday(&start, NULL);
     T->add_queue = &start;
     queueAdd(fifo, *T);
     pthread_mutex_unlock(fifo->prod_mut);
+    size_t sleep = T->Period - 10000 * (start.tv_sec - previous.tv_sec) - (start.tv_usec - previous.tv_usec);
+    // printf("sleep for %ld us\n", sleep);
+    usleep(sleep); // move this into the mutex for a real timer
     pthread_cond_broadcast(fifo->notEmpty);
   }
   return (NULL);
