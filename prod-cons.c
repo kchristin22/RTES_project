@@ -71,7 +71,7 @@ void *stop(__uint32_t id)
 void *start(void *T)
 {
   Timer *timer = (Timer *)T;
-  usleep(timer->StartDelay);
+  usleep(1000000 * timer->StartDelay);
   static struct timeval start;
   gettimeofday(&start, NULL);
   timer->TimerFcn(timer->arg);
@@ -201,16 +201,14 @@ int main(int argc, char *argv[])
   {
     for (int i = 1; i < argc; i++)
     {
-      printf("argv[%d]: %s\n", i, argv[i]);
+      // printf("argv[%d]: %s\n", i, argv[i]);
       switch (argv[i][0])
       {
       case 'p':
         p = atoi(argv[i] + 2);
-        printf("p: %d\n", p);
         break;
       case 'q':
         q = atoi(argv[i] + 2);
-        printf("q: %d\n", q);
         break;
       case 's':
         queuesize = atoi(argv[i] + 2);
@@ -224,11 +222,11 @@ int main(int argc, char *argv[])
       }
     }
   }
-  // num_tasks = 2;
-  // period[0] = 3;
-  // period[1] = 1;
+  num_tasks = 2;
+  period[0] = 3;
+  period[1] = 1;
 
-  num_tasks--; // reverse the last increment of num_tasks
+  // num_tasks--; // reverse the last increment of num_tasks
   pthread_t pro[p], con[q];
   queue *fifo;
   fifo = queueInit(queuesize, num_tasks);
@@ -248,11 +246,10 @@ int main(int argc, char *argv[])
     T[i].Period = 1000000 * period[i];
     T[i].TasksToExecute = 11;
     T[i].id = i + 1;
-    T[i].StartDelay = 1000000;
+    T[i].StartDelay = 1;
     T[i].ErrorFcn = errorFnc;
     T[i].StartFcn = start;
     T[i].StopFcn = stop;
-    T[i].StartFcn(&T[i]);
 
     prod_args[i].fifo = fifo;
     prod_args[i].T = &T[i];
@@ -272,12 +269,12 @@ int main(int argc, char *argv[])
     if (task == (num_tasks - 1))
     {
       limit = limit + p - ((num_tasks - 1) * thread_chunk);
-      printf("limit: %d\n", limit);
+      // printf("limit: %d\n", limit);
     }
     else
     {
       limit = (task + 1) * thread_chunk;
-      printf("limit: %d\n", limit);
+      // printf("limit: %d\n", limit);
     }
     for (int i = task * thread_chunk; i < limit; ++i)
     {
@@ -325,6 +322,7 @@ void *producer(void *args)
   Arguments *prod_args = (Arguments *)args;
   queue *fifo = prod_args->fifo;
   Timer *T = prod_args->T;
+  T->StartFcn(T);
   static struct timeval start;
   gettimeofday(&start, NULL);
 
