@@ -76,7 +76,6 @@ void *start(void *T)
   gettimeofday(&start, NULL);
   timer->TimerFcn(timer->arg);
   timer->TasksToExecute--;
-  usleep(timer->Period);
   return (NULL);
 }
 
@@ -222,11 +221,11 @@ int main(int argc, char *argv[])
       }
     }
   }
-  num_tasks = 2;
-  period[0] = 3;
-  period[1] = 1;
+  // num_tasks = 2;
+  // period[0] = 3;
+  // period[1] = 1;
 
-  // num_tasks--; // reverse the last increment of num_tasks
+  num_tasks--; // reverse the last increment of num_tasks
   pthread_t pro[p], con[q];
   queue *fifo;
   fifo = queueInit(queuesize, num_tasks);
@@ -322,7 +321,7 @@ void *producer(void *args)
   Arguments *prod_args = (Arguments *)args;
   queue *fifo = prod_args->fifo;
   Timer *T = prod_args->T;
-  T->StartFcn(T);
+  __uint8_t total_tasks = T->TasksToExecute;
   static struct timeval start;
   gettimeofday(&start, NULL);
 
@@ -330,6 +329,12 @@ void *producer(void *args)
   for (i = 0; i < LOOP; i++)
   {
     pthread_mutex_lock(fifo->prod_mut[T->id - 1]);
+    if (T->TasksToExecute == total_tasks)
+    {
+      T->StartFcn(T);
+      gettimeofday(&start, NULL);
+      printf("Start function of timer %d\n", T->id);
+    }
     if (fifo->full)
     {
       printf("producer: queue FULL. \n");
@@ -347,10 +352,13 @@ void *producer(void *args)
     printf("TasksToExecute of Timer with id %d: %d\n", T->id, (T->TasksToExecute + 1));
     struct timeval previous = start;
     gettimeofday(&start, NULL);
-    pthread_mutex_lock(fifo->queue_mut);
-    T->add_queue = &start;
-    queueAdd(fifo, *T);
-    pthread_mutex_unlock(fifo->queue_mut);
+    if (T->TasksToExecute != (total_tasks - 1))
+    {
+      pthread_mutex_lock(fifo->queue_mut);
+      T->add_queue = &start;
+      queueAdd(fifo, *T);
+      pthread_mutex_unlock(fifo->queue_mut);
+    }
     size_t sleep = T->Period - 10000 * (start.tv_sec - previous.tv_sec) - (start.tv_usec - previous.tv_usec);
     // printf("sleep for %ld us\n", sleep);
     usleep(sleep); // move this into the mutex for a real timer
