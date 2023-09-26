@@ -32,6 +32,7 @@
 #define Q 4
 #define NUM_TASKS 1
 #define PERIOD 1 // 1 sec
+#define MAX_YEARS_DELAY 584941
 
 void *producer(void *args);
 void *consumer(void *args);
@@ -93,18 +94,30 @@ void *startat(Timer T, __uint16_t y, __uint8_t m, __uint8_t d, __uint8_t h, __ui
   int day = localTime->tm_mday;         // Day of the month
 
   // check if the timestamp has passed or is now
-  if (year < y || month < m || day < d || localTime->tm_hour < h || localTime->tm_min < min || localTime->tm_sec < sec)
+  if (year < y || (year == y &&
+                   (month < m || (month == m &&
+                                  (day < d || (day == d &&
+                                               (localTime->tm_hour < h || (localTime->tm_hour == h &&
+                                                                           (localTime->tm_min < min || (localTime->tm_min == min &&
+                                                                                                        localTime->tm_sec < sec))))))))))
   { // add checks for overflows
-    __uint32_t us_of_day = 24 * 3600 * 10 ^ 6;
-    __uint32_t wait = (year - y) * 365 * us_of_day;
-    wait += abs(month - m) * 30 * us_of_day;
-    wait += abs(day - d) * us_of_day;
-    usleep(wait);
+    if ((year - y) > MAX_YEARS_DELAY)
+    {
+      printf("The timestamp is too far in the future\n");
+      return (NULL);
+    }
+    else
+    {
+      __uint32_t us_of_day = 24 * 3600 * (10 ^ 6);
+      __uint64_t wait = (year - y) * 365 * us_of_day;
+      wait += abs(month - m) * 30 * us_of_day;
+      wait += abs(day - d) * us_of_day;
+      usleep(wait);
+    }
   }
-  for (__uint16_t iterations = 0; iterations < T.TasksToExecute; iterations++)
+  else
   {
-    T.TimerFcn(T.arg);
-    usleep(T.Period);
+    printf("The timestamp has passed\n");
   }
   return (NULL);
 }
