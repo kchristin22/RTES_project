@@ -73,15 +73,19 @@ void *start(void *T)
 {
   Timer *timer = (Timer *)T;
   usleep(1000000 * timer->StartDelay);
-  static struct timeval start;
-  gettimeofday(&start, NULL);
   timer->TimerFcn(timer->arg);
   timer->TasksToExecute--;
   return (NULL);
 }
 
-void *startat(Timer T, __uint16_t y, __uint8_t m, __uint8_t d, __uint8_t h, __uint8_t min, __uint8_t sec)
+void *startat(Timer *T, __uint16_t y, __uint8_t m, __uint8_t d, __uint8_t h, __uint8_t min, __uint8_t sec)
 {
+
+  if (m > 12 || d > 31 || h > 24 || min > 60 || sec > 60)
+  {
+    printf("Wrong timestamp\n");
+    return (NULL);
+  }
   // Get the current system time
   time_t currentTime = time(NULL);
 
@@ -108,11 +112,17 @@ void *startat(Timer T, __uint16_t y, __uint8_t m, __uint8_t d, __uint8_t h, __ui
     }
     else
     {
-      __uint32_t us_of_day = 24 * 3600 * (10 ^ 6);
+      __uint64_t us_of_day = 24 * 3600 * (1e6);
       __uint64_t wait = (year - y) * 365 * us_of_day;
       wait += abs(month - m) * 30 * us_of_day;
       wait += abs(day - d) * us_of_day;
+      wait += abs(localTime->tm_hour - h) * 3600 * (int)(1e6);
+      wait += abs(localTime->tm_min - min) * 60 * (int)(1e6);
+      wait += abs(localTime->tm_sec - sec) * (int)(1e6);
+      printf("wait for %ld us\n", wait);
       usleep(wait);
+      T->TimerFcn(T->arg);
+      T->TasksToExecute--;
     }
   }
   else
@@ -188,6 +198,9 @@ typedef struct
   // Argument fields
   queue *fifo;
   Timer *T;
+  bool start_at;
+  __uint16_t y;
+  __uint8_t m, d, h, min, sec;
 } Arguments;
 
 void *errorFnc(void *q, void *id)
@@ -206,12 +219,18 @@ void *errorFnc(void *q, void *id)
 int main(int argc, char *argv[])
 {
   int p = P, q = Q, queuesize = QUEUESIZE;
-  int num_tasks = NUM_TASKS;
+  __uint8_t num_tasks = NUM_TASKS;
+  time_t currentTime = time(NULL);
+  struct tm *localTime = localtime(&currentTime);
+  __uint16_t year = localTime->tm_year + 1900;
+  __uint8_t month = localTime->tm_mon + 1, day = localTime->tm_mday,
+            hour = localTime->tm_hour, min = localTime->tm_min, sec = (localTime->tm_sec + 5) > 60 ? 2 : localTime->tm_sec + 5;
   float period[3] = {PERIOD, PERIOD, PERIOD};
+  bool start_at = false;
 
   if (argc > 1)
   {
-    for (int i = 1; i < argc; i++)
+    for (__uint8_t i = 1; i < argc; i++)
     {
       // printf("argv[%d]: %s\n", i, argv[i]);
       switch (argv[i][0])
@@ -222,12 +241,36 @@ int main(int argc, char *argv[])
       case 'q':
         q = atoi(argv[i] + 2);
         break;
-      case 's':
+      case 'n':
         queuesize = atoi(argv[i] + 2);
         break;
       case 't':
         period[num_tasks - 1] = atof(argv[i] + 2);
         num_tasks++;
+        break;
+      case 'y':
+        year = atoi(argv[i] + 2);
+        start_at = true;
+        break;
+      case 'm':
+        month = atoi(argv[i] + 2);
+        start_at = true;
+        break;
+      case 'd':
+        day = atoi(argv[i] + 2);
+        start_at = true;
+        break;
+      case 'h':
+        hour = atoi(argv[i] + 2);
+        start_at = true;
+        break;
+      case 'i':
+        min = atoi(argv[i] + 2);
+        start_at = true;
+        break;
+      case 's':
+        sec = atoi(argv[i] + 2);
+        start_at = true;
         break;
       default:
         printf("Wrong argument, using default feature\n");
@@ -251,16 +294,29 @@ int main(int argc, char *argv[])
 
   Timer T[num_tasks];
   Arguments prod_args[num_tasks];
-  for (int i = 0; i < num_tasks; i++)
+  for (__uint8_t i = 0; i < num_tasks; i++)
   {
     T[i].TimerFcn = find_primes;
     T[i].arg = &fpa;
     T[i].Period = 1000000 * period[i];
     T[i].TasksToExecute = 11;
     T[i].id = i + 1;
-    T[i].StartDelay = 1;
     T[i].ErrorFcn = errorFnc;
-    T[i].StartFcn = start;
+    if (start_at)
+    {
+      prod_args[i].start_at = true;
+      prod_args[i].y = year;
+      prod_args[i].m = month;
+      prod_args[i].d = day;
+      prod_args[i].h = hour;
+      prod_args[i].min = min;
+      prod_args[i].sec = sec;
+    }
+    else
+    {
+      T[i].StartFcn = start;
+      T[i].StartDelay = 1;
+    }
     T[i].StopFcn = stop;
 
     prod_args[i].fifo = fifo;
@@ -275,7 +331,7 @@ int main(int argc, char *argv[])
     fprintf(stderr, "main: Queue Init failed.\n");
     exit(1);
   }
-  for (int task = 0; task < num_tasks; task++)
+  for (__uint8_t task = 0; task < num_tasks; task++)
   {
 
     if (task == (num_tasks - 1))
@@ -344,9 +400,14 @@ void *producer(void *args)
     pthread_mutex_lock(fifo->prod_mut[T->id - 1]);
     if (T->TasksToExecute == total_tasks)
     {
-      T->StartFcn(T);
-      gettimeofday(&start, NULL);
       printf("Start function of timer %d\n", T->id);
+      if (prod_args->start_at)
+      {
+        startat(T, prod_args->y, prod_args->m, prod_args->d, prod_args->h, prod_args->min, prod_args->sec);
+      }
+      else
+        T->StartFcn(T);
+      gettimeofday(&start, NULL);
     }
     if (fifo->full)
     {
