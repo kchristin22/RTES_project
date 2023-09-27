@@ -311,6 +311,7 @@ int main(int argc, char *argv[])
     }
     else
     {
+      prod_args[i].start_at = false;
       T[i].StartFcn = start;
       T[i].StartDelay = 1; // use delay only when time to start the timer is not specified
     }
@@ -408,6 +409,7 @@ void *producer(void *args)
         T->StartFcn(T);
       }
       gettimeofday(&start, NULL); // re-calculate the current time since the start functions induce a delay
+      T->TasksToExecute--; // update the number of tasks to be executed
     }
     if (fifo->full)
     {
@@ -415,14 +417,14 @@ void *producer(void *args)
       T->ErrorFcn(fifo, &T->id); // wait for signal from consumer
     }
 
-    if (T->TasksToExecute <= 0) // this timer is finished so this thread serves no purpose anymore
-    {
-      // printf("producer exits for id %d\n", T->id);
-      pthread_mutex_unlock(fifo->prod_mut[T->id - 1]);
-      return (NULL);
-    }
+    // if (T->TasksToExecute <= 0) // this timer is finished so this thread serves no purpose anymore
+    // {
+    //   // printf("producer exits for id %d\n", T->id);
+    //   pthread_mutex_unlock(fifo->prod_mut[T->id - 1]);
+    //   return (NULL);
+    // }
 
-    T->TasksToExecute--; // update the number of tasks to be executed
+    
     // printf("TasksToExecute of Timer with id %d: %d\n", T->id, (T->TasksToExecute + 1));
     struct timeval previous = start; // save the previous time this producer thread was executed
     gettimeofday(&start, NULL);
