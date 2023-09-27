@@ -434,6 +434,10 @@ void *producer(void *args)
       pthread_mutex_unlock(fifo->queue_mut);
     }
     size_t sleep = T->Period - 10000 * (start.tv_sec - previous.tv_sec) - (start.tv_usec - previous.tv_usec); // calculate and fix the drift of the timer due to the mutex locks
+    if (sleep < 0)
+    {
+      sleep = 0; // the period is already exceeded so no need to add a delay
+    }
     usleep(sleep);                                                                                            // add the delay before the next execution of the timer
     pthread_mutex_unlock(fifo->prod_mut[T->id - 1]);                                                          // let another thread of this timer access the queue after a period passes
     pthread_cond_broadcast(fifo->notEmpty);
