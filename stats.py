@@ -1,6 +1,8 @@
 import re
 import statistics
 import subprocess
+import time
+import matplotlib.pyplot as plt
 
 # Create dictionaries to store data for drift and interval
 drift_data = {}
@@ -11,38 +13,48 @@ drift_pattern = r"Drift for Timer (\d+): (\d+) us"
 interval_pattern = r"Time spent in the queue of Timer (\d+): (\d+) us"
 
 # Function to extract data from a line and update statistics
-def process_line(line):
+def process_line(line, args):
     drift_match = re.match(drift_pattern, line)
     interval_match = re.match(interval_pattern, line)
     if drift_match:
         timer_id, sleep = drift_match.groups()
-        drift_data.setdefault(timer_id, []).append(int(sleep))
+        drift_data.setdefault(timer_id, {}).setdefault(tuple(args), []).append(int(sleep))
     elif interval_match:
         timer_id, interval = interval_match.groups()
-        interval_data.setdefault(timer_id, []).append(int(interval))
+        interval_data.setdefault(timer_id, {}).setdefault(tuple(args), []).append(int(interval))
 
-# Run the external program './prod-cons' with arguments 't=1' and 't=3'
-try:
-    process = subprocess.Popen(["./prod-cons", "t=1"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
-    # process2 = subprocess.Popen(["./prod-cons", "t=3"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+# Function to run the external program with arguments and collect data for one hour
+def run_and_collect_data(args, run_time=3600):
+    try:
+        process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
 
-    # Continuously read and process lines from the program's output
-    while True:
-        line = process.stdout.readline()
-        if not line:
-            break  # Reached the end of output
-        process_line(line)
+        start_time = time.time()
+        while time.time() - start_time < run_time:
+            line = process.stdout.readline()
+            if not line:
+                break  # Reached the end of output
+            process_line(line, args)
 
-    # while True:
-    #     line = process2.stdout.readline()
-    #     if not line:
-    #         break  # Reached the end of output
-    #     process_line(line)
+    except KeyboardInterrupt:
+        pass
 
-except KeyboardInterrupt:
+# Run the program with different arguments for one hour each
+arguments_list = [
+    ["./prod-cons", "t=1", "t=2"],
+    ["./prod-cons", "t=1", "t=2", "t=3"],
+]
+
+
+for args in arguments_list:
+    # drift_data.clear()
+    # interval_data.clear()
+
+    print(f"Running with arguments: {' '.join(args)} for one hour...")
+    run_and_collect_data(args, run_time=10)
+
     for timer_id in drift_data.keys():
-        drift_values = drift_data.get(timer_id, [])
-        interval_values = interval_data.get(timer_id, [])
+        drift_values = drift_data.get(timer_id, {}).get(tuple(args), [])
+        interval_values = interval_data.get(timer_id, {}).get(tuple(args), [])
 
         if drift_values and interval_values:
             min_drift = min(drift_values)
@@ -63,3 +75,20 @@ except KeyboardInterrupt:
 
         else:
             print(f"No data found for Timer {timer_id}")
+        
+
+
+for timer_id in drift_data.keys():
+    plt.figure() # Create a new figure for each timer ID
+    for args in arguments_list:
+        plt.plot(drift_data[timer_id].get(tuple(args),[]), label=f"Arguments: {' '.join(args)}")   
+    
+    # Customize the plot
+    plt.xlabel("Time (seconds)")
+    plt.ylabel("Drift Values (us)")
+    plt.legend()
+    plt.title(f"Drift Values Over Time (Timer {timer_id})")
+
+
+plt.show()
+
