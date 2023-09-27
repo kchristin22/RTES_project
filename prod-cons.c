@@ -435,8 +435,9 @@ void *producer(void *args)
       queueAdd(fifo, *T);
       pthread_mutex_unlock(fifo->queue_mut);
     }
-    size_t sleep = (T->Period - 10000 * (start.tv_sec - previous.tv_sec) - (start.tv_usec - previous.tv_usec)); // calculate and fix the drift of the timer due to the mutex locks
-    printf("Drift for Timer %d: %ld us\n", T->id, sleep);
+    size_t drift = 10000 * (start.tv_sec - previous.tv_sec) - (start.tv_usec - previous.tv_usec);
+    size_t sleep = (T->Period - drift); // calculate and fix the drift of the timer due to the mutex locks
+    printf("Drift for Timer %d: %ld us\n", T->id, drift);
     if (sleep < 0)
     {
       sleep = 0; // the period is already exceeded so no need to add a delay
