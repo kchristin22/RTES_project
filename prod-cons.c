@@ -65,7 +65,7 @@ typedef struct
 
 void *stop(__uint32_t id)
 {
-  printf("End of Timer with id: %d\n", id);
+  // printf("End of Timer with id: %d\n", id);
   return (NULL);
 }
 
@@ -127,7 +127,7 @@ void *startat(Timer *T, __uint16_t y, __uint8_t m, __uint8_t d, __uint8_t h, __u
   }
   else
   {
-    printf("The timestamp has passed\n");
+    // printf("The timestamp has passed\n");
   }
   return (NULL);
 }
@@ -174,7 +174,7 @@ void *find_primes(void *args)
   //     printf("%d ", prime_numbers[i]);
   // }
   // printf("\n");
-  printf("Function execution\n");
+  // printf("Function execution\n");
   free(prime_numbers);
   return (NULL);
 }
@@ -365,7 +365,7 @@ int main(int argc, char *argv[])
     pthread_join(pro[i], NULL);
   }
 
-  printf("All producers finished\n");
+  // printf("All producers finished\n");
 
   exit_flag = true; // set the exit flag to true to signal the consumer threads that from now on no item will be added to the queue
 
@@ -376,7 +376,7 @@ int main(int argc, char *argv[])
     pthread_join(con[i], NULL);
   }
 
-  printf("deleting fifo\n");
+  // printf("deleting fifo\n");
   queueDelete(fifo);
 
   return 0;
@@ -398,7 +398,7 @@ void *producer(void *args)
                                                    // so not any other producer thread of this timer can access the queue
     if (T->TasksToExecute == total_tasks)          // checks if the timer has not yet started
     {
-      printf("Start function of timer %d\n", T->id);
+      // printf("Start function of timer %d\n", T->id);
       if (prod_args->start_at)
       {
         startat(T, prod_args->y, prod_args->m, prod_args->d, prod_args->h, prod_args->min, prod_args->sec);
@@ -411,19 +411,19 @@ void *producer(void *args)
     }
     if (fifo->full)
     {
-      printf("producer: queue FULL. \n");
+      // printf("producer: queue FULL. \n");
       T->ErrorFcn(fifo, &T->id); // wait for signal from consumer
     }
 
     if (T->TasksToExecute <= 0) // this timer is finished so this thread serves no purpose anymore
     {
-      printf("producer exits for id %d\n", T->id);
+      // printf("producer exits for id %d\n", T->id);
       pthread_mutex_unlock(fifo->prod_mut[T->id - 1]);
       return (NULL);
     }
 
     T->TasksToExecute--; // update the number of tasks to be executed
-    printf("TasksToExecute of Timer with id %d: %d\n", T->id, (T->TasksToExecute + 1));
+    // printf("TasksToExecute of Timer with id %d: %d\n", T->id, (T->TasksToExecute + 1));
     struct timeval previous = start; // save the previous time this producer thread was executed
     gettimeofday(&start, NULL);
     if (T->TasksToExecute != (total_tasks - 1)) // avoid adding the first item to the queue since it is already executed by the start function
@@ -433,9 +433,14 @@ void *producer(void *args)
       queueAdd(fifo, *T);
       pthread_mutex_unlock(fifo->queue_mut);
     }
-    size_t sleep = T->Period - 10000 * (start.tv_sec - previous.tv_sec) - (start.tv_usec - previous.tv_usec); // calculate and fix the drift of the timer due to the mutex locks
-    usleep(sleep);                                                                                            // add the delay before the next execution of the timer
-    pthread_mutex_unlock(fifo->prod_mut[T->id - 1]);                                                          // let another thread of this timer access the queue after a period passes
+    size_t sleep = (T->Period - 10000 * (start.tv_sec - previous.tv_sec) - (start.tv_usec - previous.tv_usec)); // calculate and fix the drift of the timer due to the mutex locks
+    printf("Drift for Timer %d: %ld us\n", T->id, sleep);
+    if (sleep < 0)
+    {
+      sleep = 0; // the period is already exceeded so no need to add a delay
+    }
+    usleep(sleep);                                   // add the delay before the next execution of the timer
+    pthread_mutex_unlock(fifo->prod_mut[T->id - 1]); // let another thread of this timer access the queue after a period passes
     pthread_cond_broadcast(fifo->notEmpty);
   }
   return (NULL);
@@ -456,11 +461,11 @@ void *consumer(void *q)
     {
       if (exit_flag)
       {
-        printf("consumer exits\n"); // the queue is empty and no more items will be added to it from now on
+        // printf("consumer exits\n"); // the queue is empty and no more items will be added to it from now on
         pthread_mutex_unlock(fifo->queue_mut);
         return (NULL);
       }
-      printf("consumer: queue EMPTY.\n");
+      // printf("consumer: queue EMPTY.\n");
       pthread_cond_wait(fifo->notEmpty, fifo->queue_mut);
     }
     queueDel(fifo, &d);
@@ -470,7 +475,7 @@ void *consumer(void *q)
     struct timeval end;
     gettimeofday(&end, NULL);
     time_t interval = 1000000 * (end.tv_sec - d.add_queue->tv_sec) + end.tv_usec - d.add_queue->tv_usec; // calculate the time the item spents in the queue
-    // printf("Time interval: %ld us\n", interval);
+    printf("Time spent in the queue of Timer %d: %ld us\n", d.id, interval);
     fflush(stdout);
     d.TimerFcn(d.arg);
     if (d.TasksToExecute == 0) // the queue is a FIFO queue so the last item to be added signifies that no tasks are left
