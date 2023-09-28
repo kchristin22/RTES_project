@@ -41,8 +41,10 @@ def run_and_collect_data(args, run_time=10):
 
 # Run the program with different arguments for one hour each
 arguments_list = [
-    ["./prod-cons", "t=1", "t=2"],
-    ["./prod-cons", "t=1", "t=2", "t=3"],
+    ["./prod-cons", "t=1"],
+    ["./prod-cons", "t=0.1"],
+    ["./prod-cons", "t=0.01"],
+    ["./prod-cons", "t=1", "t=0.1", "t=0.01"],
 ]
 
 
@@ -88,11 +90,11 @@ for period in drift_data.keys():
         plt.plot(drift_data[period].get(tuple(args),[]), label=f"Arguments: {' '.join(args)}")   
     
     # Customize the plot
-    plt.xlabel("Time (seconds)")
+    plt.xlabel("No. of measurement (Time)")
     plt.ylabel("Drift Values (us)")
     plt.legend()
-    plt.title(f"Drift Values Over Time (Timer {period})")
-    float_period = int(period) /1000000
+    float_period = int(period) / 1000000
+    plt.title(f"Drift Values Over Time (Timer with period {float_period})")
     filename = f"{float_period: .2f}_plot.png"
     plt.savefig(filename)
 
