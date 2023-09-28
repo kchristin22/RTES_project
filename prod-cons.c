@@ -276,6 +276,9 @@ int main(int argc, char *argv[])
     }
   }
 
+  // period[0] = 1;
+  // period[1] = 2;
+  // num_tasks = 3;
   num_tasks--; // reverse the last increment of num_tasks
   pthread_t pro[p], con[q];
   queue *fifo;
@@ -409,7 +412,7 @@ void *producer(void *args)
         T->StartFcn(T);
       }
       gettimeofday(&start, NULL); // re-calculate the current time since the start functions induce a delay
-      T->TasksToExecute--; // update the number of tasks to be executed
+      T->TasksToExecute--;        // update the number of tasks to be executed
     }
     if (fifo->full)
     {
@@ -424,7 +427,6 @@ void *producer(void *args)
     //   return (NULL);
     // }
 
-    
     // printf("TasksToExecute of Timer with id %d: %d\n", T->id, (T->TasksToExecute + 1));
     struct timeval previous = start; // save the previous time this producer thread was executed
     gettimeofday(&start, NULL);
@@ -435,14 +437,14 @@ void *producer(void *args)
       queueAdd(fifo, *T);
       pthread_mutex_unlock(fifo->queue_mut);
     }
-    size_t drift = 10000 * (start.tv_sec - previous.tv_sec) - (start.tv_usec - previous.tv_usec);
-    size_t sleep = (T->Period - drift); // calculate and fix the drift of the timer due to the mutex locks
-    printf("Drift for Timer %d: %ld us\n", T->id, drift);
-    if (sleep < 0)
+    long int drift = (1000000 * (start.tv_sec - previous.tv_sec) + (start.tv_usec - previous.tv_usec)) - T->Period; // calculate and fix the drift of the timer due to the mutex locks
+    if (drift < 0)
     {
-      sleep = 0; // the period is already exceeded so no need to add a delay
+      drift = 0; // the drift was fixed previously and the producer was called earlier
     }
-    usleep(sleep);                                   // add the delay before the next execution of the timer
+    printf("Drift for Timer %d: %ld us\n", T->id, drift);
+    // printf("sleep for %ld us\n", T->Period - drift);
+    usleep(T->Period - drift);                       // add the delay before the next execution of the timer
     pthread_mutex_unlock(fifo->prod_mut[T->id - 1]); // let another thread of this timer access the queue after a period passes
     pthread_cond_broadcast(fifo->notEmpty);
   }
