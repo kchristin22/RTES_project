@@ -10,19 +10,19 @@ drift_data = {}
 interval_data = {}
 
 # Regular expressions to match the desired lines
-drift_pattern = r"Drift for Timer (\d+): (\d+) us"
-interval_pattern = r"Time spent in the queue of Timer (\d+): (\d+) us"
+drift_pattern = r"Drift for Timer with period (\d+) us: (\d+) us"
+interval_pattern = r"Time spent in the queue of Timer with period (\d+) us: (\d+) us"
 
 # Function to extract data from a line and update statistics
 def process_line(line, args):
     drift_match = re.match(drift_pattern, line)
     interval_match = re.match(interval_pattern, line)
     if drift_match:
-        timer_id, sleep = drift_match.groups()
-        drift_data.setdefault(timer_id, {}).setdefault(tuple(args), []).append(int(sleep))
+        period, sleep = drift_match.groups()
+        drift_data.setdefault(period, {}).setdefault(tuple(args), []).append(int(sleep))
     elif interval_match:
-        timer_id, interval = interval_match.groups()
-        interval_data.setdefault(timer_id, {}).setdefault(tuple(args), []).append(int(interval))
+        period, interval = interval_match.groups()
+        interval_data.setdefault(period, {}).setdefault(tuple(args), []).append(int(interval))
 
 # Function to run the external program with arguments and collect data for one hour
 def run_and_collect_data(args, run_time=10):
@@ -56,9 +56,9 @@ for args in arguments_list:
     print(f"Running with arguments: {' '.join(args)} for {run_time} seconds...")
     run_and_collect_data(args, run_time)
 
-    for timer_id in drift_data.keys():
-        drift_values = drift_data.get(timer_id, {}).get(tuple(args), [])
-        interval_values = interval_data.get(timer_id, {}).get(tuple(args), [])
+    for period in drift_data.keys():
+        drift_values = drift_data.get(period, {}).get(tuple(args), [])
+        interval_values = interval_data.get(period, {}).get(tuple(args), [])
 
         if drift_values and interval_values:
             min_drift = min(drift_values)
@@ -73,26 +73,27 @@ for args in arguments_list:
             median_interval = statistics.median(interval_values)
             std_deviation_interval = statistics.stdev(interval_values)
 
-            print(f"\nStatistics for Timer {timer_id}:")
+            print(f"\nStatistics for Timer with period {period} us:")
             print(f"Drift - Min: {min_drift}, Max: {max_drift}, Mean: {mean_drift}, Median: {median_drift}, Std Dev: {std_deviation_drift}")
             print(f"Interval - Min: {min_interval}, Max: {max_interval}, Mean: {mean_interval}, Median: {median_interval}, Std Dev: {std_deviation_interval}")
 
         else:
-            print(f"No data found for Timer {timer_id}")
+            print(f"No data found for Timer with period {period} us")
         
 
 
-for timer_id in drift_data.keys():
+for period in drift_data.keys():
     plt.figure() # Create a new figure for each timer ID
     for args in arguments_list:
-        plt.plot(drift_data[timer_id].get(tuple(args),[]), label=f"Arguments: {' '.join(args)}")   
+        plt.plot(drift_data[period].get(tuple(args),[]), label=f"Arguments: {' '.join(args)}")   
     
     # Customize the plot
     plt.xlabel("Time (seconds)")
     plt.ylabel("Drift Values (us)")
     plt.legend()
-    plt.title(f"Drift Values Over Time (Timer {timer_id})")
-    filename = f"{timer_id}_plot.png"
+    plt.title(f"Drift Values Over Time (Timer {period})")
+    float_period = int(period) /1000000
+    filename = f"{float_period: .2f}_plot.png"
     plt.savefig(filename)
 
 

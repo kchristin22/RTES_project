@@ -442,7 +442,7 @@ void *producer(void *args)
     {
       drift = 0; // the drift was fixed previously and the producer was called earlier
     }
-    printf("Drift for Timer %d: %ld us\n", T->id, drift);
+    printf("Drift for Timer with period %d us: %ld us\n", T->Period, drift);
     // printf("sleep for %ld us\n", T->Period - drift);
     usleep(T->Period - drift);                       // add the delay before the next execution of the timer
     pthread_mutex_unlock(fifo->prod_mut[T->id - 1]); // let another thread of this timer access the queue after a period passes
@@ -480,7 +480,7 @@ void *consumer(void *q)
     struct timeval end;
     gettimeofday(&end, NULL);
     time_t interval = 1000000 * (end.tv_sec - d.add_queue->tv_sec) + end.tv_usec - d.add_queue->tv_usec; // calculate the time the item spents in the queue
-    printf("Time spent in the queue of Timer %d: %ld us\n", d.id, interval);
+    printf("Time spent in the queue of Timer with period %d us: %ld us\n", d.Period, interval);
     fflush(stdout);
     d.TimerFcn(d.arg);
     if (d.TasksToExecute == 0) // the queue is a FIFO queue so the last item to be added signifies that no tasks are left
