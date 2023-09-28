@@ -3,6 +3,7 @@ import statistics
 import subprocess
 import time
 import matplotlib.pyplot as plt
+import sys
 
 # Create dictionaries to store data for drift and interval
 drift_data = {}
@@ -24,7 +25,7 @@ def process_line(line, args):
         interval_data.setdefault(timer_id, {}).setdefault(tuple(args), []).append(int(interval))
 
 # Function to run the external program with arguments and collect data for one hour
-def run_and_collect_data(args, run_time=3600):
+def run_and_collect_data(args, run_time=10):
     try:
         process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
 
@@ -46,11 +47,14 @@ arguments_list = [
 
 
 for args in arguments_list:
-    # drift_data.clear()
-    # interval_data.clear()
 
-    print(f"Running with arguments: {' '.join(args)} for one hour...")
-    run_and_collect_data(args, run_time=10)
+    if (len(sys.argv) > 1):
+        run_time = int(sys.argv[1])
+    else:
+        run_time = 10
+
+    print(f"Running with arguments: {' '.join(args)} for {run_time} seconds...")
+    run_and_collect_data(args, run_time)
 
     for timer_id in drift_data.keys():
         drift_values = drift_data.get(timer_id, {}).get(tuple(args), [])
@@ -88,7 +92,9 @@ for timer_id in drift_data.keys():
     plt.ylabel("Drift Values (us)")
     plt.legend()
     plt.title(f"Drift Values Over Time (Timer {timer_id})")
+    filename = f"{timer_id}_plot.png"
+    plt.savefig(filename)
 
 
-plt.show()
+# plt.show()
 
