@@ -4,6 +4,7 @@ import subprocess
 import time
 import matplotlib.pyplot as plt
 import sys
+import json
 
 # Create dictionaries to store data for drift and interval
 drift_data = {}
@@ -48,46 +49,73 @@ arguments_list = [
 ]
 
 
-for args in arguments_list:
+# for args in arguments_list:
 
-    if (len(sys.argv) > 1):
-        run_time = int(sys.argv[1])
-    else:
-        run_time = 10
+#     if (len(sys.argv) > 1):
+#         run_time = int(sys.argv[1])
+#     else:
+#         run_time = 10
 
-    print(f"Running with arguments: {' '.join(args)} for {run_time} seconds...")
-    run_and_collect_data(args, run_time)
+#     print(f"Running with arguments: {' '.join(args)} for {run_time} seconds...")
+#     run_and_collect_data(args, run_time)
 
-    for period in drift_data.keys():
-        drift_values = drift_data.get(period, {}).get(tuple(args), [])
-        interval_values = interval_data.get(period, {}).get(tuple(args), [])
+#     for period in drift_data.keys():
+#         drift_values = drift_data.get(period, {}).get(tuple(args), [])
+#         interval_values = interval_data.get(period, {}).get(tuple(args), [])
 
-        if drift_values and interval_values:
-            min_drift = min(drift_values)
-            max_drift = max(drift_values)
-            mean_drift = statistics.mean(drift_values)
-            median_drift = statistics.median(drift_values)
-            std_deviation_drift = statistics.stdev(drift_values)
+#         if drift_values and interval_values:
+#             min_drift = min(drift_values)
+#             max_drift = max(drift_values)
+#             mean_drift = statistics.mean(drift_values)
+#             median_drift = statistics.median(drift_values)
+#             std_deviation_drift = statistics.stdev(drift_values)
 
-            min_interval = min(interval_values)
-            max_interval = max(interval_values)
-            mean_interval = statistics.mean(interval_values)
-            median_interval = statistics.median(interval_values)
-            std_deviation_interval = statistics.stdev(interval_values)
+#             min_interval = min(interval_values)
+#             max_interval = max(interval_values)
+#             mean_interval = statistics.mean(interval_values)
+#             median_interval = statistics.median(interval_values)
+#             std_deviation_interval = statistics.stdev(interval_values)
 
-            print(f"\nStatistics for Timer with period {period} us:")
-            print(f"Drift - Min: {min_drift}, Max: {max_drift}, Mean: {mean_drift}, Median: {median_drift}, Std Dev: {std_deviation_drift}")
-            print(f"Interval - Min: {min_interval}, Max: {max_interval}, Mean: {mean_interval}, Median: {median_interval}, Std Dev: {std_deviation_interval}")
+#             print(f"\nStatistics for Timer with period {period} us:")
+#             print(f"Drift - Min: {min_drift}, Max: {max_drift}, Mean: {mean_drift}, Median: {median_drift}, Std Dev: {std_deviation_drift}")
+#             print(f"Interval - Min: {min_interval}, Max: {max_interval}, Mean: {mean_interval}, Median: {median_interval}, Std Dev: {std_deviation_interval}")
 
-        else:
-            print(f"No data found for Timer with period {period} us")
-        
+#         else:
+#             print(f"No data found for Timer with period {period} us")
+
+# print(drift_data)    
+
+# with open("drift_data.txt", "w") as file:
+#     for key, sub_dict in drift_data.items():
+#         file.write(f"{key}:\n")
+#         for sub_key, sub_value in sub_dict.items():
+#             file.write(f"  {sub_key}: {sub_value}\n")
+
+# # Load the data back into a dictionary
+loaded_data = {}
+
+with open("drift_data.txt", "r") as file:
+    current_key = None
+    for line in file:
+        line = line.strip()
+        if line.endswith(":"):
+            current_key = line[:-1]  # Remove the colon
+            loaded_data[current_key] = {}
+        elif current_key:
+            parts = line.split(": ")
+            sub_key = parts[0].strip()
+            sub_value = eval(parts[1])  # Use eval to convert the list representation back to a list
+            loaded_data[current_key][sub_key] = sub_value
+# Print the loaded data
+print(loaded_data)
 
 
-for period in drift_data.keys():
+for period in loaded_data.keys():
     plt.figure() # Create a new figure for each timer ID
     for args in arguments_list:
-        plt.plot(drift_data[period].get(tuple(args),[]), label=f"Arguments: {' '.join(args)}")   
+        args_str =  str(tuple(args)) 
+        print(args_str)
+        plt.plot(loaded_data[period].get(args_str,[]), label=f"Arguments: {' '.join(args)}")   
     
     # Customize the plot
     plt.xlabel("No. of measurement (Time)")
