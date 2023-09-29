@@ -439,7 +439,12 @@ void *producer(void *args)
       drift = 0; // the drift was fixed previously and the producer was called earlier
     }
     printf("Drift for Timer %d: %ld us\n", T->id, drift);
-    usleep(T->Period - drift);                       // add the delay before the next execution of the timer                                                                                          // add the delay before the next execution of the timer
+    long int sleep = T->Period - drift;
+    if (sleep > 0)
+      usleep(sleep);
+    else
+      usleep(0); // add the delay before the next execution of the timer
+
     pthread_mutex_unlock(fifo->prod_mut[T->id - 1]); // let another thread of this timer access the queue after a period passes
     pthread_cond_broadcast(fifo->notEmpty);
   }
