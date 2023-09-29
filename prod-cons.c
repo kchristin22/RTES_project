@@ -26,7 +26,7 @@
 #include <signal.h>
 #include <string.h>
 
-#define QUEUESIZE 5;
+#define QUEUESIZE 100;
 #define LOOP 100000000
 #define P 6
 #define Q 6
@@ -437,14 +437,19 @@ void *producer(void *args)
       queueAdd(fifo, *T);
       pthread_mutex_unlock(fifo->queue_mut);
     }
-    long int drift = (1000000 * (start.tv_sec - previous.tv_sec) + (start.tv_usec - previous.tv_usec)) - T->Period; // calculate and fix the drift of the timer due to the mutex locks
+    long int drift = (1000000 * (start.tv_sec - previous.tv_sec) + (start.tv_usec - previous.tv_usec)) - T->Period; // calculate the drift of the timer due to the mutex locks
     if (drift < 0)
     {
       drift = 0; // the drift was fixed previously and the producer was called earlier
     }
     printf("Drift for Timer with period %d us: %ld us\n", T->Period, drift);
     // printf("sleep for %ld us\n", T->Period - drift);
-    usleep(T->Period - drift);                       // add the delay before the next execution of the timer
+    size_t sleep = T->Period - drift; // fix the drift
+    if (sleep > 0)
+      usleep(sleep); // add the delay before the next execution of the timer
+    else
+      usleep(0);
+
     pthread_mutex_unlock(fifo->prod_mut[T->id - 1]); // let another thread of this timer access the queue after a period passes
     pthread_cond_broadcast(fifo->notEmpty);
   }
