@@ -444,7 +444,7 @@ void *producer(void *args)
     }
     printf("Drift for Timer with period %d us: %ld us\n", T->Period, drift);
     // printf("sleep for %ld us\n", T->Period - drift);
-    size_t sleep = T->Period - drift; // fix the drift
+    long int sleep = T->Period - drift; // fix the drift
     if (sleep > 0)
       usleep(sleep); // add the delay before the next execution of the timer
     else
