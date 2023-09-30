@@ -51,7 +51,7 @@ typedef struct
 typedef struct
 {
   __uint32_t Period;               // period of task execution in usec
-  sig_atomic_t TasksToExecute;     // number of tasks to be executed
+  __uint32_t TasksToExecute;     // number of tasks to be executed
   __uint8_t StartDelay;            // start executing tasks after a StartDelay delay
   void *(*StartFcn)(void *);       // initiate data to be used by TimerFcn
   void *(*StopFcn)(__uint32_t id); // function to be executed after the last call of the TimerFcn (TasksToExecute==0)
@@ -432,6 +432,7 @@ void *producer(void *args)
       T->add_queue = &start;               // note the time the item is passed on the queue to calculate afterwards the time it spents in the queue
       queueAdd(fifo, *T);
       pthread_mutex_unlock(fifo->queue_mut);
+      pthread_cond_broadcast(fifo->notEmpty);
     }
     long int drift = (1000000 * (start.tv_sec - previous.tv_sec) + (start.tv_usec - previous.tv_usec)) - T->Period; // calculate and fix the drift of the timer due to the mutex locks
     if (drift < 0)
@@ -446,7 +447,6 @@ void *producer(void *args)
       usleep(0); // add the delay before the next execution of the timer
 
     pthread_mutex_unlock(fifo->prod_mut[T->id - 1]); // let another thread of this timer access the queue after a period passes
-    pthread_cond_broadcast(fifo->notEmpty);
   }
   return (NULL);
 }
