@@ -8,4 +8,6 @@ This repository consists of two branches:
 
 (1) Python should be installed in the system to acquire the data of each test run. The tests were conducted with the python script first saving the data to the SD card of the Raspberry Pi and then running the rest on a laptop to create the plots. Only the basic python libraries need to included in the Raspberry Pi, so not any additional package installation is necessary for that part (since the plotting happens on a laptop). 
 
-(2) The timer's function was measured to last around 20us and the time it took for the producer to add an item was assumed to be equal to the mean value extracted from test 1 plus the timer's period. 
+(2) The timer's function was measured to last around 20us and the time it took for the producer to add an item was assumed to be equal to the mean value extracted from test 1 plus the timer's period. There are two python scripts: 
+* one to extract the stats of program runs
+* one to create a 4D graph of the time interval based onn the p, q and n variables (**Note: The only line to be printed by the program should have the form `Time interval: 1234 us`**)
