@@ -10,4 +10,4 @@ This repository consists of two branches:
 
 (2) The timer's function was measured to last around 20us and the time it took for the producer to add an item was assumed to be equal to the mean value extracted from test 1 plus the timer's period. There are two python scripts: 
 * one to extract the stats of program runs
-* one to create a 4D graph of the time interval based onn the p, q and n variables (**Note: The only line to be printed by the program should have the form `Time interval: 1234 us`**)
+* one to create a 4D graph of the time interval based on the p, q and n variables (**Note: The only line to be printed by the program should have the form `Time interval: 1234 us`**)
