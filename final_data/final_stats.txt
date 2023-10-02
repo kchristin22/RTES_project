@@ -1,0 +1,34 @@
+Running with arguments: ./prod-cons t=1 for 3600 seconds...
+
+Statistics for Timer with period 1000000 us:
+Drift - Min: 0, Max: 5598, Mean: 117.09444444444445, Median: 113.0, Std Dev: 144.17521013231087
+Interval - Min: 99, Max: 399, Mean: 139.78994165045847, Median: 139, Std Dev: 10.22747386986075
+
+Running with arguments: ./prod-cons t=0.1 for 3600 seconds...
+No data found for Timer with period 1000000 us
+
+Statistics for Timer with period 100000 us:
+Drift - Min: 0, Max: 6199, Mean: 118.86700973574409, Median: 116.0, Std Dev: 107.78200480626903
+Interval - Min: 93, Max: 562, Mean: 136.13889120698767, Median: 135, Std Dev: 16.276617334162502
+
+Running with arguments: ./prod-cons t=0.01 for 3600 seconds...
+No data found for Timer with period 1000000 us
+No data found for Timer with period 100000 us
+
+Statistics for Timer with period 10000 us:
+Drift - Min: 0, Max: 12744, Mean: 123.07087572710174, Median: 122, Std Dev: 127.09869978853429
+Interval - Min: 89, Max: 7274, Mean: 131.57351022795004, Median: 131.0, Std Dev: 20.69215070907436
+
+Running with arguments: ./prod-cons t=1 t=0.1 t=0.01 for 3600 seconds...
+
+Statistics for Timer with period 1000000 us:
+Drift - Min: 0, Max: 0, Mean: 0, Median: 0, Std Dev: 0.0
+Interval - Min: 55, Max: 437, Mean: 126.22395109752709, Median: 128, Std Dev: 17.393266152533307
+
+Statistics for Timer with period 100000 us:
+Drift - Min: 0, Max: 0, Mean: 0, Median: 0.0, Std Dev: 0.0
+Interval - Min: 43, Max: 548, Mean: 126.31537904528491, Median: 127.0, Std Dev: 19.80789274936493
+
+Statistics for Timer with period 10000 us:
+Drift - Min: 0, Max: 12102, Mean: 118.63116761861373, Median: 96, Std Dev: 128.6432667682422
+Interval - Min: 42, Max: 7266, Mean: 127.98771042729466, Median: 128.0, Std Dev: 20.18208535558393
