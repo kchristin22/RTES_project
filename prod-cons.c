@@ -26,10 +26,10 @@
 #include <signal.h>
 #include <string.h>
 
-#define QUEUESIZE 100;
+#define QUEUESIZE 1;
 #define LOOP 100000000
-#define P 6
-#define Q 6
+#define P 1
+#define Q 30
 #define NUM_TASKS 1            // number of timers
 #define PERIOD 1               // 1 sec
 #define MAX_YEARS_DELAY 584941 // Max value of years in the future the timer can be set to due to overflow
