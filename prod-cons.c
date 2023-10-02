@@ -29,7 +29,7 @@
 #define QUEUESIZE 1;
 #define LOOP 100000000
 #define P 1
-#define Q 30
+#define Q 7
 #define NUM_TASKS 1            // number of timers
 #define PERIOD 1               // 1 sec
 #define MAX_YEARS_DELAY 584941 // Max value of years in the future the timer can be set to due to overflow
@@ -156,6 +156,9 @@ bool is_prime(int n)
 
 void *find_primes(void *args)
 {
+  static struct timeval start;               // initialize start time
+  gettimeofday(&start, NULL);
+
   find_primes_args fpa = *(find_primes_args *)args;
 
   int count = 0;
@@ -176,6 +179,10 @@ void *find_primes(void *args)
   // printf("\n");
   // printf("Function execution\n");
   free(prime_numbers);
+  static struct timeval end;               // initialize start time
+  gettimeofday(&end, NULL);
+  time_t interval = 1000000 * (end.tv_sec - start.tv_sec) + end.tv_usec - start.tv_usec; // calculate the time the item spents in the queue
+  printf("Function execution time: %ld us\n", interval);
   return (NULL);
 }
 
