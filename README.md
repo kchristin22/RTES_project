@@ -3,4 +3,9 @@ A producer-consumer type of problem that "produces" a new item at a specified pe
 
 This repository consists of two branches:
 * `main`: containing the program version where TasksToExecute are limited and the program terminates after finishing all of them
-* `tests`: containing a python script to run the program version where TasksToExecute are unlimited, with different arguments and for a user-specified time duration and extract the statistics of each test
+* `tests`(1): containing a python script to run the program version where TasksToExecute are unlimited, with different arguments and for a user-specified time duration and extract the statistics of each test
+* `real-time-impl`(2): similar program version to the `tests` one but with adjusted p, q and queuesize arguments to decrease the time interval when run along with a program argument of t=1
+
+(1) Python should be installed in the system to acquire the data of each test run. The tests were conducted with the python script first saving the data to the SD card of the Raspberry Pi and then running the rest on a laptop to create the plots. 
+
+(2) The timer's function was measured to last around 4us and the time it took for the producer to add an item was assumed to be equal to the mean value extracted from test 1 plus the timer's period. 
