@@ -1,14 +1,14 @@
-import matplotlib.pyplot as plt
-import plotly.express as px
+# import matplotlib.pyplot as plt
+# import plotly.express as px
 import statistics
 import csv
-import pandas as pd
+# import pandas as pd
 
 import subprocess
 
 interval_pattern = r"Time spent in the queue of Timer with period (\d+) us: (\d+) us"
 
-def run_test(P, Q, QUEUESIZE, seconds_to_run=30, save_folder="data"):
+def run_test(P, Q, QUEUESIZE, seconds_to_run=60, save_folder="data"):
     cmd = ["./prod-cons", "t=1", f"p={P}", f"q={Q}", f"n={QUEUESIZE}"]
 
 
@@ -26,8 +26,8 @@ def run_test(P, Q, QUEUESIZE, seconds_to_run=30, save_folder="data"):
 
     return file_name
 
-P_SIZES = [1, 4, 6, 10]
-Q_SIZES = [1, 4, 6, 7, 10, 20]
+P_SIZES = [1, 6, 10]
+Q_SIZES = [2, 6, 10]
 QUEUESIZE_SIZES = [1, 10, 100]
 
 
@@ -71,33 +71,35 @@ with open(output_file, mode='w', newline='') as file:
 
 print(f"Data has been written to {output_file}")
 
-input_file = "output.csv"
+#############################################################
 
-# Initialize an empty list to store the data
-data_dict = []
+# input_file = "output.csv"
 
-# Open the CSV file for reading
-with open(input_file, mode='r') as file:
-    # Create a CSV reader
-    reader = csv.DictReader(file)
+# # Initialize an empty list to store the data
+# data_dict = []
 
-    # Iterate through the rows in the CSV file
-    for row in reader:
-        # Convert the row to a dictionary and append it to the list
-        data_dict.append({key: int(value) if key != 'mean_time' else float(value) for key, value in row.items()})
+# # Open the CSV file for reading
+# with open(input_file, mode='r') as file:
+#     # Create a CSV reader
+#     reader = csv.DictReader(file)
 
-# Print the data in the original format
-for item in data_dict:
-    print(item)
+#     # Iterate through the rows in the CSV file
+#     for row in reader:
+#         # Convert the row to a dictionary and append it to the list
+#         data_dict.append({key: int(value) if key != 'mean_time' else float(value) for key, value in row.items()})
 
-df = pd.DataFrame(data_dict)
+# # Print the data in the original format
+# for item in data_dict:
+#     print(item)
 
-# 4D plot
-fig = plt.figure(figsize=(10, 8))
-ax = fig.add_subplot(111, projection='3d')
+# df = pd.DataFrame(data_dict)
 
-fig = px.scatter_3d(df, x="P", y="Q", z="QUEUESIZE", color="mean_time", size="mean_time",
-                    hover_data=["mean_time"], labels={"mean_time": "Mean Time"},
-                    title="4D Plot of Parameters with Hover Tooltips")
-fig.update_layout(scene=dict(zaxis=dict(type='log', tickvals=[])), width=800, height=600)
-fig.show()
+# # 4D plot
+# fig = plt.figure(figsize=(10, 8))
+# ax = fig.add_subplot(111, projection='3d')
+
+# fig = px.scatter_3d(df, x="P", y="Q", z="QUEUESIZE", color="mean_time", size="mean_time",
+#                     hover_data=["mean_time"], labels={"mean_time": "Mean Time"},
+#                     title="4D Plot of Parameters with Hover Tooltips")
+# fig.update_layout(scene=dict(zaxis=dict(type='log', tickvals=[])), width=800, height=600)
+# fig.show()
