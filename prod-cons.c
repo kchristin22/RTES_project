@@ -450,7 +450,7 @@ void *producer(void *args)
     {
       drift = 0; // the drift was fixed previously and the producer was called earlier
     }
-    printf("Drift for Timer with period %d us: %ld us\n", T->Period, drift);
+    // printf("Drift for Timer with period %d us: %ld us\n", T->Period, drift);
     // printf("sleep for %ld us\n", T->Period - drift);
     long int sleep = T->Period - drift; // fix the drift
     if (sleep > 0)
@@ -492,8 +492,8 @@ void *consumer(void *q)
     struct timeval end;
     gettimeofday(&end, NULL);
     time_t interval = 1000000 * (end.tv_sec - d.add_queue->tv_sec) + end.tv_usec - d.add_queue->tv_usec; // calculate the time the item spents in the queue
-    printf("Time spent in the queue of Timer with period %d us: %ld us\n", d.Period, interval);
-    // printf("Time interval: %ld us\n", interval);
+    // printf("Time spent in the queue of Timer with period %d us: %ld us\n", d.Period, interval);
+    printf("Time interval: %ld us\n", interval);
     fflush(stdout);
     d.TimerFcn(d.arg);
     if (d.TasksToExecute == 0) // the queue is a FIFO queue so the last item to be added signifies that no tasks are left
