@@ -26,10 +26,10 @@
 #include <signal.h>
 #include <string.h>
 
-#define QUEUESIZE 1;
+#define QUEUESIZE 3;
 #define LOOP 100000000
-#define P 1
-#define Q 7
+#define P 3
+#define Q 6
 #define NUM_TASKS 1            // number of timers
 #define PERIOD 1               // 1 sec
 #define MAX_YEARS_DELAY 584941 // Max value of years in the future the timer can be set to due to overflow
@@ -156,7 +156,7 @@ bool is_prime(int n)
 
 void *find_primes(void *args)
 {
-  static struct timeval start;               // initialize start time
+  static struct timeval start; // initialize start time
   gettimeofday(&start, NULL);
 
   find_primes_args fpa = *(find_primes_args *)args;
@@ -179,10 +179,10 @@ void *find_primes(void *args)
   // printf("\n");
   // printf("Function execution\n");
   free(prime_numbers);
-  static struct timeval end;               // initialize start time
+  static struct timeval end; // initialize start time
   gettimeofday(&end, NULL);
   time_t interval = 1000000 * (end.tv_sec - start.tv_sec) + end.tv_usec - start.tv_usec; // calculate the time the item spents in the queue
-  printf("Function execution time: %ld us\n", interval);
+  // printf("Function execution time: %ld us\n", interval);
   return (NULL);
 }
 
@@ -352,7 +352,7 @@ int main(int argc, char *argv[])
     }
     for (int i = task * thread_chunk; i < limit; ++i)
     {
-      printf("Creating producer thread %d for task %d\n", i, task);
+      // printf("Creating producer thread %d for task %d\n", i, task);
       if (pthread_create(&pro[i], NULL, producer, &prod_args[task]) != 0)
       {
         fprintf(stderr, "Failed to create producer thread %d\n", i);
@@ -493,6 +493,7 @@ void *consumer(void *q)
     gettimeofday(&end, NULL);
     time_t interval = 1000000 * (end.tv_sec - d.add_queue->tv_sec) + end.tv_usec - d.add_queue->tv_usec; // calculate the time the item spents in the queue
     printf("Time spent in the queue of Timer with period %d us: %ld us\n", d.Period, interval);
+    // printf("Time interval: %ld us\n", interval);
     fflush(stdout);
     d.TimerFcn(d.arg);
     if (d.TasksToExecute == 0) // the queue is a FIFO queue so the last item to be added signifies that no tasks are left
