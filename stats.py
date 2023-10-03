@@ -45,8 +45,8 @@ def run_and_collect_data(args, run_time=10):
 
 # Run the program with different arguments for one hour each
 arguments_list = [
-    ["./prod-cons", "t=1", "p=6", "q=6", "n=100"],
-    ["./prod-cons", "t=1", "p=1", "q=6", "n=1"],
+    # ["./prod-cons", "t=1", "p=6", "q=6", "n=100"],
+    ["./prod-cons", "t=1", "p=1", "q=2", "n=1"]
 ]
 
 
@@ -86,13 +86,13 @@ for args in arguments_list:
 
 # print(drift_data)    
 
-# with open("drift_data.txt", "w") as file:
-#     for key, sub_dict in drift_data.items():
-#         file.write(f"{key}:\n")
-#         for sub_key, sub_value in sub_dict.items():
-#             file.write(f"  {sub_key}: {sub_value}\n")
+with open("drift_data_1_2_1.txt", "w") as file:
+    for key, sub_dict in drift_data.items():
+        file.write(f"{key}:\n")
+        for sub_key, sub_value in sub_dict.items():
+            file.write(f"  {sub_key}: {sub_value}\n")
 
-# # Load the data back into a dictionary
+# Load the data back into a dictionary
 # loaded_data = {}
 
 # with open("drift_data.txt", "r") as file:
