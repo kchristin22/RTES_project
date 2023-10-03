@@ -9,7 +9,7 @@ import subprocess
 interval_pattern = r"Time spent in the queue of Timer with period (\d+) us: (\d+) us"
 
 def run_test(P, Q, QUEUESIZE, seconds_to_run=60, save_folder="data"):
-    cmd = ["./prod-cons", "t=1", f"p={P}", f"q={Q}", f"n={QUEUESIZE}"]
+    cmd = ["./prod-cons-graph", "t=1", f"p={P}", f"q={Q}", f"n={QUEUESIZE}"]
 
 
     file_name = f"{save_folder}/{P}_{Q}_{QUEUESIZE}.txt"
@@ -27,7 +27,7 @@ def run_test(P, Q, QUEUESIZE, seconds_to_run=60, save_folder="data"):
     return file_name
 
 P_SIZES = [1, 6, 10]
-Q_SIZES = [2, 6, 10]
+Q_SIZES = [1, 6, 10]
 QUEUESIZE_SIZES = [1, 10, 100]
 
 

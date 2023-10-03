@@ -46,7 +46,7 @@ def run_and_collect_data(args, run_time=10):
 # Run the program with different arguments for one hour each
 arguments_list = [
     # ["./prod-cons", "t=1", "p=6", "q=6", "n=100"],
-    ["./prod-cons", "t=1", "p=1", "q=2", "n=1"]
+    ["./prod-cons", "t=1", "p=1", "q=1", "n=1"]
 ]
 
 
